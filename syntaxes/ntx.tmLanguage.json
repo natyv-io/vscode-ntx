@@ -24,7 +24,16 @@
     "L:source.ntx -comment -string": {
       "patterns": [
         {
-          "comment": "A run of plain text strictly between a '>' and the next '<' -- a widget's own child text (<Label>this part</Label>). Excludes '{'/'}' so it never crosses into a real Go block, which is what keeps this from swallowing ordinary multi-line Go code that happens to contain both comparison operators.",
+          "comment": "The <%...%> raw-code escape's own sentinel (2026-09-02). First attempt at this put these two rules in the top-level `patterns` array instead of here -- confirmed broken via a real 'Developer: Inspect Editor Tokens and Scopes' check in a live Extension Development Host: both '<' and '%' still resolved to plain source.go operator scopes with no ntx scope anywhere in the stack, i.e. exactly the same same-position-tie loss against VS Code's bundled Go grammar this file's own top comment already documents for any top-level rule. Only works as an injection, same as childText below.",
+          "match": "<%",
+          "name": "punctuation.section.embedded.begin.ntx"
+        },
+        {
+          "match": "%>",
+          "name": "punctuation.section.embedded.end.ntx"
+        },
+        {
+          "comment": "A run of plain text strictly between a '>' and the next '<' -- a widget's own child text (<Label>this part</Label>). Excludes '{'/'}' so it never crosses into a real Go block, which is what keeps this from swallowing ordinary multi-line Go code that happens to contain both comparison operators. Re-checked against the <%...%> raw-code escape (2026-09-02, editor-support pass for ~/.claude/plans/lexical-wishing-penguin.md's Phase B1) via the same real offline harness: a nested tag's own child text (e.g. Save in <% for _, m := range xs { <Button>Save</Button> } %>) still gets correctly blanked, and the realistic authoring pattern of putting a comparison directly in a tag's own attribute (<Badge tone={count > 0} />) is untouched, since '{'/'}' already protects it. The one real false positive this re-check found is a narrower instance of the class already accepted above: a bare, semicolon-joined statement sharing a line with a following tag and no intervening brace (e.g. 'x := count > 0; <Badge tone={x} />') loses coloring on the trailing fragment between the comparison and the tag -- same 'rare in practice' reasoning as above (idiomatic Go doesn't join statements with semicolons on one line, and the natural way to use a derived boolean is directly inside the tag's own {} attribute, which is safe). Accepted rather than fixed: a real fix needs actual tag-boundary tracking, which is exactly the complexity this file's own top-level comment already explains was rejected in favor of the LSP's real semantic tokens.",
           "match": "(?<=>)[^<>{}]+(?=<)"
         }
       ]
